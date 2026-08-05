@@ -1,4 +1,4 @@
-# 稻问 RiceCare：水稻病虫害多级 RAG 对话平台
+# RiceCare：水稻病害多级 RAG 对话智能体
 
 这是一个可本地运行的水稻病虫害辅助问答平台。系统把 YOLO11L 图片检测、
 BGE 中文向量、ChromaDB、LangGraph 三级路由、DeepSeek、SSE 流式输出和

@@ -12,6 +12,8 @@ models/*.engine
 models/*.safetensors
 data/rice_chroma_db/*
 !data/rice_chroma_db/.gitkeep
+knowledge/corpus/pmc/*
+!knowledge/corpus/pmc/.gitkeep
 outputs/*
 !outputs/.gitkeep
 uploads/*

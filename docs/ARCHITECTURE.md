@@ -11,7 +11,9 @@ FastAPI /api/chat/stream
   ▼
 LangGraph StateGraph
   ├─ detect：有图片时运行 YOLO11L
-  ├─ retrieve：按最多 3 个候选类别并行查询 BGE + Chroma
+  ├─ enhance_query：独立改写 + HyDE + Multi-Query（一次 LLM 调用）
+  ├─ retrieve：150-token 子块向量/BM25 多路并发
+  │    └─ 回填 500-token 父块 → parent_id 级 RRF 去重 → BGE ReRank
   ├─ route：按相关度选择精准命中 / 参考生成 / AI 推断
   ├─ generate：DeepSeek 依据路由提示和滑动窗口生成草稿
   ├─ guard：声明级忠实度门禁（目标 >= 0.90）
@@ -49,4 +51,5 @@ FastAPI 内存会话按 `session_id` 保存完成轮次。每次构造提示词�
 `answer_start / answer_delta / answer_end` 事件流式发送已通过门禁的最终答案。
 这样牺牲少量首字节时间，换取不会把被判定为幻觉的草稿先显示再撤回。
 
-完整 SSE 事件见 `API.md`，指标语义见 `EVALUATION.md`。
+完整 SSE 事件见 `API.md`，指标语义见 `EVALUATION.md`，混合检索细节和评测见
+`RETRIEVAL.md`。

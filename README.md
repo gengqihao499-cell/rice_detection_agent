@@ -1,4 +1,4 @@
-# RiceCare：水稻病害多级 RAG 对话智能体
+# 稻问 RiceCare：水稻病虫害多级 RAG 对话平台
 
 这是一个可本地运行的水稻病虫害辅助问答平台。系统把 YOLO11L 图片检测、
 BGE 中文向量、ChromaDB、LangGraph 三级路由、DeepSeek、SSE 流式输出和
@@ -10,7 +10,12 @@ RAGAS-light 在线质量评估组合成完整的多轮对话闭环。
 
 - React 对话界面：会话历史、图片上传、流式回答、引用、路由状态和质量面板。
 - LangGraph 多级 RAG：`精准命中`、`参考生成`、`AI 推断` 三种策略。
-- 本地检索：`BAAI/bge-small-zh-v1.5` + ChromaDB，支持疾病代码过滤。
+- 可追踪语料：按配置从 PMC Open Access Subset 下载约 10MB 水稻全文，仅保留
+  CC0/CC BY/CC BY-SA，并为每篇文献记录原文 URL、DOI、许可与 SHA-256。
+- 父子索引：约 150-token 子块用于向量/BM25 精确召回，命中后回填约 500-token
+  父块作为生成上下文，兼顾定位精度和上下文完整性。
+- 混合检索：Query 独立改写、HyDE、3 路 Multi-Query、BGE/Chroma 向量召回与
+  BM25 召回并发执行，经父块级 RRF 去重融合和 BGE CrossEncoder 精排后返回 Top 3–5。
 - 幻觉门禁：声明级忠实度检查，目标 `>= 0.90`，失败后最多重试 2 次；
   仍不合格时自动降级为知识库原文摘录。
 - 异步 RAGAS-light：忠实度、相关性、上下文精确率、上下文召回率；
@@ -35,13 +40,22 @@ Copy-Item .env.example .env
 在 `.env` 中填写自己的 `DEEPSEEK_API_KEY`。`.env.example` 只能放占位符，
 不得提交真实密钥。
 
-### 2. 构建知识库
+### 2. 下载约 10MB 语料并构建索引
 
 ```powershell
-python -m scripts.build_rag_index
+python -m scripts.prepare_rag --target-mb 10
 ```
 
-第一次运行会下载 BGE 模型，并在 `data/rice_chroma_db/` 创建或更新索引。
+命令可中断续传：它从开放接口下载语料、写入逐篇来源清单，再按 `.env` 的父子分块和
+嵌入模型配置创建 `data/rice_chroma_db/`。第一次运行还会下载所选嵌入模型。
+
+如果希望准备完成后直接启动平台：
+
+```powershell
+python -m scripts.prepare_rag --target-mb 10 --serve
+```
+
+已有语料时只重建索引：`python -m scripts.prepare_rag --skip-download --force-index`。
 
 ### 3. 构建对话前端
 
@@ -79,6 +93,7 @@ Vite 会把 `/api` 代理到 FastAPI 的 `8000` 端口。
 ```text
 meta
   -> status / detection
+  -> query_enhancement（改写、HyDE、Multi-Query）
   -> retrieval
   -> route
   -> guard（可能触发 retry）
@@ -88,7 +103,8 @@ meta
   -> done
 ```
 
-完整接口与事件字段见 `docs/API.md`。
+完整接口与事件字段见 `docs/API.md`；混合检索实现、RRF 公式和模型评测见
+`docs/RETRIEVAL.md`。
 
 ## 质量评估边界
 
@@ -146,8 +162,12 @@ frontend/                       React + Vite 对话界面
 rice_agent/rag/                 LangGraph、三级路由、滑动窗口
 rice_agent/evaluation/          忠实度门禁、RAGAS-light、JSONL 存储
 rice_agent/web/api.py           FastAPI、SSE、上传和反馈接口
-knowledge/rice_documents/       8 类水稻病虫害知识文档
+knowledge/rice_documents/       8 类人工整理水稻病虫害知识文档
+knowledge/corpus/pmc/           可续传开放许可论文语料（运行数据，不提交 Git）
+scripts/prepare_rag.py          一键下载语料、建立父子索引、可选启动服务
 scripts/benchmark_latency.py    前后响应时间受控基准
+scripts/benchmark_embeddings.py 嵌入模型 Hit@K/MRR 评测
+scripts/benchmark_retrieval_pipeline.py  混合检索消融评测
 web_app.py                      Web 平台启动入口
 ```
 

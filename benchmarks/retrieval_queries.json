@@ -1,0 +1,33 @@
+[
+  {"query": "叶尖和叶缘出现水浸状黄橙色条斑，清晨有乳白色菌脓，可能是什么病", "relevant_disease_codes": ["bacterial_leaf_blight"]},
+  {"query": "强降雨大风后叶片从边缘向基部枯黄，应该重点排查哪种细菌病", "relevant_disease_codes": ["bacterial_leaf_blight"]},
+  {"query": "水稻白叶枯病如何通过排水和施肥进行田间管理", "relevant_disease_codes": ["bacterial_leaf_blight"]},
+
+  {"query": "水稻叶片有圆形褐斑，中心灰色，外围红褐色，是胡麻斑病吗", "relevant_disease_codes": ["brown_spot"]},
+  {"query": "养分不足且叶面长期潮湿时容易发生哪种圆形叶斑病", "relevant_disease_codes": ["brown_spot"]},
+  {"query": "如何区分胡麻斑病的圆斑和叶瘟的梭形病斑", "relevant_disease_codes": ["brown_spot", "leaf_blast"]},
+
+  {"query": "模型识别为健康叶片是否代表一定没有早期病害", "relevant_disease_codes": ["healthy_leaf"]},
+  {"query": "没有检测框能不能直接判断水稻健康", "relevant_disease_codes": ["healthy_leaf"]},
+  {"query": "水稻叶片看起来健康时日常还要观察哪些部位", "relevant_disease_codes": ["healthy_leaf"]},
+
+  {"query": "叶片病斑两端尖呈梭形，中间灰白边缘红褐，是什么病", "relevant_disease_codes": ["leaf_blast"]},
+  {"query": "频繁降雨、结露和氮肥过量为什么容易诱发叶瘟", "relevant_disease_codes": ["leaf_blast"]},
+  {"query": "稻瘟病叶瘟的水肥管理和巡田建议", "relevant_disease_codes": ["leaf_blast"]},
+
+  {"query": "叶尖出现灰绿色水浸区域并扩展为灰白色灼伤状坏死", "relevant_disease_codes": ["leaf_scald"]},
+  {"query": "病健交界呈深浅相间波纹带状的叶枯样病害是什么", "relevant_disease_codes": ["leaf_scald"]},
+  {"query": "Leaf Scald 标签为什么不能直接解释为叶鞘腐病确诊", "relevant_disease_codes": ["leaf_scald"]},
+
+  {"query": "病斑狭长线状并与叶脉平行，抽穗前后出现，是什么病", "relevant_disease_codes": ["narrow_brown_leaf_spot"]},
+  {"query": "缺钾土壤和生育后期容易发生哪种窄条褐斑", "relevant_disease_codes": ["narrow_brown_leaf_spot"]},
+  {"query": "窄褐斑病如何进行钾肥管理和成熟期巡查", "relevant_disease_codes": ["narrow_brown_leaf_spot"]},
+
+  {"query": "抽穗期穗颈变黑褐腐烂并形成白穗空粒，可能是什么", "relevant_disease_codes": ["neck_blast"]},
+  {"query": "如何根据虫孔虫粪和穗颈病斑区分螟虫白穗与穗颈瘟", "relevant_disease_codes": ["neck_blast"]},
+  {"query": "叶瘟田块为什么要在抽穗前后警惕穗颈瘟", "relevant_disease_codes": ["neck_blast"]},
+
+  {"query": "叶片上有白色半透明刮痕和叶内潜道，还能看到带刺小甲虫", "relevant_disease_codes": ["rice_hispa"]},
+  {"query": "Rice hispa 是稻飞虱还是水稻铁甲虫", "relevant_disease_codes": ["rice_hispa"]},
+  {"query": "发现稻铁甲虫刮食后是否应该立即施药，如何调查虫口", "relevant_disease_codes": ["rice_hispa"]}
+]

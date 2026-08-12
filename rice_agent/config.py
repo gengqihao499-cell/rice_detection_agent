@@ -56,9 +56,70 @@ class Settings:
         "BAAI/bge-small-zh-v1.5",
     )
     embedding_device: str = os.getenv("EMBEDDING_DEVICE", "cpu")
+    embedding_local_files_only: bool = _env_bool(
+        "EMBEDDING_LOCAL_FILES_ONLY",
+        False,
+    )
+    embedding_query_prompt: str = os.getenv(
+        "EMBEDDING_QUERY_PROMPT",
+        "",
+    )
+    embedding_benchmark_models: tuple[str, ...] = tuple(
+        item.strip()
+        for item in os.getenv(
+            "EMBEDDING_BENCHMARK_MODELS",
+            "BAAI/bge-small-zh-v1.5,BAAI/bge-base-zh-v1.5,"
+            "BAAI/bge-large-zh-v1.5,BAAI/bge-m3,"
+            "Qwen/Qwen3-Embedding-0.6B",
+        ).split(",")
+        if item.strip()
+    )
     rag_top_k: int = int(os.getenv("RAG_TOP_K", "4"))
+    rag_candidate_top_k: int = int(
+        os.getenv("RAG_CANDIDATE_TOP_K", "8")
+    )
+    rag_fusion_top_k: int = int(
+        os.getenv("RAG_FUSION_TOP_K", "20")
+    )
+    rag_final_top_k: int = int(
+        os.getenv("RAG_FINAL_TOP_K", "4")
+    )
+    rrf_k: int = int(os.getenv("RRF_K", "60"))
+    multi_query_count: int = int(
+        os.getenv("MULTI_QUERY_COUNT", "3")
+    )
+    query_enhancement_enabled: bool = _env_bool(
+        "QUERY_ENHANCEMENT_ENABLED",
+        True,
+    )
+    hyde_enabled: bool = _env_bool("HYDE_ENABLED", True)
+    reranker_enabled: bool = _env_bool("RERANKER_ENABLED", True)
+    reranker_model_name: str = os.getenv(
+        "RERANKER_MODEL_NAME",
+        "BAAI/bge-reranker-base",
+    )
+    reranker_device: str = os.getenv("RERANKER_DEVICE", "cpu")
+    reranker_batch_size: int = int(
+        os.getenv("RERANKER_BATCH_SIZE", "8")
+    )
     rag_chunk_size: int = int(os.getenv("RAG_CHUNK_SIZE", "500"))
     rag_chunk_overlap: int = int(os.getenv("RAG_CHUNK_OVERLAP", "80"))
+    rag_parent_chunk_tokens: int = int(
+        os.getenv("RAG_PARENT_CHUNK_TOKENS", "500")
+    )
+    rag_parent_overlap_tokens: int = int(
+        os.getenv("RAG_PARENT_OVERLAP_TOKENS", "50")
+    )
+    rag_child_chunk_tokens: int = int(
+        os.getenv("RAG_CHILD_CHUNK_TOKENS", "150")
+    )
+    rag_child_overlap_tokens: int = int(
+        os.getenv("RAG_CHILD_OVERLAP_TOKENS", "25")
+    )
+    rag_tokenizer_model_name: str = os.getenv(
+        "RAG_TOKENIZER_MODEL_NAME",
+        "",
+    )
     rag_precise_threshold: float = float(
         os.getenv("RAG_PRECISE_THRESHOLD", "0.78")
     )
@@ -91,6 +152,11 @@ class Settings:
     )
 
     knowledge_dir: Path = PROJECT_ROOT / "knowledge" / "rice_documents"
+    knowledge_corpus_dir: Path = _resolve_project_path(
+        os.getenv("KNOWLEDGE_CORPUS_DIR", ""),
+        PROJECT_ROOT / "knowledge" / "corpus" / "pmc",
+    )
+    knowledge_target_mb: int = int(os.getenv("KNOWLEDGE_TARGET_MB", "10"))
     chroma_dir: Path = PROJECT_ROOT / "data" / "rice_chroma_db"
     output_dir: Path = PROJECT_ROOT / "outputs"
     upload_dir: Path = PROJECT_ROOT / "uploads"

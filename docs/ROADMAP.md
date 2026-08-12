@@ -6,6 +6,8 @@
 - FastAPI SSE 流式接口。
 - LangGraph 检测、并行检索、三级路由、生成、门禁、重试状态图。
 - BGE + Chroma 主检索与缺依赖时的关键词降级检索。
+- PMC 开放许可语料下载、逐篇来源 manifest 与 150/500-token 父子索引。
+- BGE-small/base/large、BGE-M3、Qwen3-Embedding 可复现 Hit@K/MRR/延迟评测入口。
 - 滑动窗口会话管理。
 - RAGAS-light 四维异步评估、后端实时日志和 JSONL 留存。
 - 每轮用户反馈闭环。

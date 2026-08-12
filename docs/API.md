@@ -27,9 +27,10 @@
 | 事件 | 作用 |
 |---|---|
 | `meta` | 会话与轮次 ID |
-| `status` | detect/retrieve/generate/guard 阶段状态 |
+| `status` | detect/query_enhancement/retrieve/generate/guard 阶段状态 |
 | `detection` | YOLO 公开结果与标注图 URL |
-| `retrieval` | 命中数量、最高分、来源列表 |
+| `query_enhancement` | 独立 Query 改写、Multi-Query、HyDE 状态和预览 |
+| `retrieval` | 命中数量、最高分、来源列表与混合检索 trace |
 | `route` | 三级路由决策与原因 |
 | `guard` | 忠实度门禁分、目标、重试次数 |
 | `answer_start` | 最终答案开始 |

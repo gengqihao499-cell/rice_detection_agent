@@ -13,6 +13,8 @@ from langgraph.graph import END, START, StateGraph
 
 from rice_agent.config import settings
 from rice_agent.evaluation.grounding import FaithfulnessGuard, message_text
+from rice_agent.rag.hybrid_retriever import HybridRetriever
+from rice_agent.rag.query_expansion import QueryEnhancer
 from rice_agent.rag.router import RouteMode, decide_route
 
 
@@ -21,6 +23,7 @@ class RagAgentState(TypedDict):
     history: list[dict[str, str]]
     image_path: str | None
     detection: dict[str, Any] | None
+    query_plan: dict[str, Any]
     contexts: list[dict[str, Any]]
     route: dict[str, Any]
     answer: str
@@ -54,6 +57,7 @@ class LangGraphRiceRagAgent:
         detector: Detector | None = None,
         llm: Any | None = None,
         guard: FaithfulnessGuard | None = None,
+        query_enhancer: QueryEnhancer | None = None,
     ) -> None:
         self.retriever = retriever or self._default_retriever
         self.detector = detector or self._default_detector
@@ -64,6 +68,7 @@ class LangGraphRiceRagAgent:
             else None
         )
         self.guard = guard or FaithfulnessGuard(self.llm)
+        self.query_enhancer = query_enhancer or QueryEnhancer(self.llm)
         self.graph = self._build_graph()
 
     @staticmethod
@@ -79,20 +84,24 @@ class LangGraphRiceRagAgent:
         )
 
     @staticmethod
-    def _default_retriever(
+    async def _default_retriever(
         question: str,
         disease_code: str | None,
         k: int,
+        *,
+        query_plan: dict[str, Any] | None = None,
     ) -> list[dict[str, Any]]:
         try:
             from rice_agent.services.rag_store import RiceKnowledgeStore
 
-            if not hasattr(LangGraphRiceRagAgent, "_knowledge_store"):
-                LangGraphRiceRagAgent._knowledge_store = RiceKnowledgeStore()
-            return LangGraphRiceRagAgent._knowledge_store.search(
-                question=question,
-                disease_code=disease_code,
-                k=k,
+            if not hasattr(LangGraphRiceRagAgent, "_hybrid_retriever"):
+                store = RiceKnowledgeStore()
+                LangGraphRiceRagAgent._hybrid_retriever = HybridRetriever(store)
+            return await LangGraphRiceRagAgent._hybrid_retriever.search(
+                question,
+                disease_code,
+                k,
+                query_plan=query_plan,
             )
         except ModuleNotFoundError:
             from rice_agent.services.fallback_search import keyword_search
@@ -122,13 +131,15 @@ class LangGraphRiceRagAgent:
     def _build_graph(self) -> Any:
         builder = StateGraph(RagAgentState)
         builder.add_node("detect", self._detect_node)
+        builder.add_node("enhance_query", self._enhance_query_node)
         builder.add_node("retrieve", self._retrieve_node)
         builder.add_node("route", self._route_node)
         builder.add_node("generate", self._generate_node)
         builder.add_node("guard", self._guard_node)
         builder.add_node("finalize", self._finalize_node)
         builder.add_edge(START, "detect")
-        builder.add_edge("detect", "retrieve")
+        builder.add_edge("detect", "enhance_query")
+        builder.add_edge("enhance_query", "retrieve")
         builder.add_edge("retrieve", "route")
         builder.add_edge("route", "generate")
         builder.add_edge("generate", "guard")
@@ -167,6 +178,68 @@ class LangGraphRiceRagAgent:
         )
         return {"detection": result, "timings": timings}
 
+    async def _enhance_query_node(
+        self,
+        state: RagAgentState,
+    ) -> dict[str, Any]:
+        writer = get_stream_writer()
+        writer(
+            {
+                "event": "status",
+                "stage": "query_enhancement",
+                "state": "running",
+            }
+        )
+        started = time.perf_counter()
+        plan = await self.query_enhancer.enhance(
+            state["question"],
+            state["history"],
+        )
+        timings = {
+            **state["timings"],
+            "query_enhancement_ms": _now_ms(started),
+        }
+        data = plan.to_dict()
+        writer(
+            {
+                "event": "query_enhancement",
+                "stage": "query_enhancement",
+                "state": "completed",
+                "rewritten_query": data["rewritten_query"],
+                "multi_queries": data["multi_queries"],
+                "hyde_used": data["hyde_used"],
+                "hyde_preview": _trim(data["hyde_document"], 160),
+                "method": data["method"],
+            }
+        )
+        return {"query_plan": data, "timings": timings}
+
+    async def _call_retriever(
+        self,
+        question: str,
+        disease_code: str | None,
+        k: int,
+        query_plan: dict[str, Any],
+    ) -> Any:
+        kwargs: dict[str, Any] = {}
+        try:
+            parameters = inspect.signature(self.retriever).parameters.values()
+            if any(
+                parameter.name == "query_plan"
+                or parameter.kind is inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters
+            ):
+                kwargs["query_plan"] = query_plan
+        except (TypeError, ValueError):
+            pass
+        return await self._call(
+            self.retriever,
+            question,
+            disease_code,
+            k,
+            **kwargs,
+        )
+
     async def _retrieve_node(self, state: RagAgentState) -> dict[str, Any]:
         writer = get_stream_writer()
         writer({"event": "status", "stage": "retrieve", "state": "running"})
@@ -175,11 +248,11 @@ class LangGraphRiceRagAgent:
         search_codes: list[str | None] = disease_codes or [None]
 
         tasks = [
-            self._call(
-                self.retriever,
+            self._call_retriever(
                 state["question"],
                 code,
-                settings.rag_top_k,
+                settings.rag_final_top_k,
+                state["query_plan"],
             )
             for code in search_codes[:3]
         ]
@@ -203,8 +276,13 @@ class LangGraphRiceRagAgent:
             key=lambda item: float(item.get("relevance_score", 0.0) or 0.0),
             reverse=True,
         )
-        contexts = contexts[: max(settings.rag_top_k, settings.rag_top_k * 2)]
+        contexts = contexts[: max(3, min(5, settings.rag_final_top_k))]
         timings = {**state["timings"], "retrieval_ms": _now_ms(started)}
+        traces = [
+            item.get("retrieval_trace")
+            for item in contexts
+            if isinstance(item.get("retrieval_trace"), dict)
+        ]
         writer(
             {
                 "event": "retrieval",
@@ -217,6 +295,7 @@ class LangGraphRiceRagAgent:
                 if contexts
                 else 0.0,
                 "sources": self._sources(contexts),
+                "hybrid_trace": traces[0] if traces else {},
             }
         )
         return {"contexts": contexts, "timings": timings}
@@ -512,6 +591,14 @@ class LangGraphRiceRagAgent:
                     "relevance_score": round(
                         float(item.get("relevance_score", 0.0) or 0.0), 4
                     ),
+                    "rrf_score": round(
+                        float(item.get("rrf_score", 0.0) or 0.0), 8
+                    ),
+                    "rerank_score": round(
+                        float(item.get("rerank_score", 0.0) or 0.0), 4
+                    ),
+                    "rerank_method": item.get("rerank_method"),
+                    "retrieval_channels": item.get("retrieval_channels", []),
                 }
             )
         return sources
@@ -528,6 +615,7 @@ class LangGraphRiceRagAgent:
             "history": history or [],
             "image_path": image_path,
             "detection": None,
+            "query_plan": {},
             "contexts": [],
             "route": {},
             "answer": "",
@@ -556,6 +644,7 @@ class LangGraphRiceRagAgent:
             "event": "graph_complete",
             "answer": state["answer"],
             "contexts": state["contexts"],
+            "query_plan": state["query_plan"],
             "route": state["route"],
             "guard": state["faithfulness_gate"],
             "retry_count": state["retry_count"],

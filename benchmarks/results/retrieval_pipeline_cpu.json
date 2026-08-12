@@ -1,0 +1,34 @@
+{
+  "dataset": "benchmarks\\retrieval_queries.json",
+  "query_count": 24,
+  "notes": "离线消融使用确定性多Query扩展与词法ReRank；线上配置DeepSeek后会增加HyDE，配置BGE reranker后会替换词法精排。",
+  "results": [
+    {
+      "pipeline": "vector_bge_small",
+      "query_count": 24,
+      "hit@1": 0.875,
+      "hit@3": 0.9583,
+      "hit@5": 1.0,
+      "mrr@5": 0.9201,
+      "mean_latency_ms": 43.29
+    },
+    {
+      "pipeline": "bm25",
+      "query_count": 24,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr@5": 1.0,
+      "mean_latency_ms": 0.29
+    },
+    {
+      "pipeline": "multi_query_rrf_lexical_rerank",
+      "query_count": 24,
+      "hit@1": 1.0,
+      "hit@3": 1.0,
+      "hit@5": 1.0,
+      "mrr@5": 1.0,
+      "mean_latency_ms": 66.05
+    }
+  ]
+}
